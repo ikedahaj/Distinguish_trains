@@ -194,3 +194,4 @@ cython_debug/
 .cursorindexingignore
 
 GPX位置判定
+test.py
