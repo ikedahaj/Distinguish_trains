@@ -26,14 +26,14 @@ def _binarySearch(StationList,point,access=lambda i,x:x[i][0])->int:
     right=len(StationList)-1
     while left<right:
         mid=(left+right)//2
-        if point[0]<access(mid,StationList)[0]:
+        if point[0]<access(mid,StationList)[0][0]:
             right=mid-1
-        elif point[0]>access(mid,StationList)[0]:
-            left=mid
+        elif point[0]>access(mid,StationList)[0][0]:
+            left=mid+1
         else:
             break
     ind=int((left+right)//2)
-    while ind>0 and abs(access(ind,StationList)[0]-access(ind-1,StationList)[0])<(1e-4):
+    while ind>0 and abs(access(ind,StationList)[0][0]-access(ind-1,StationList)[0][0])<(1e-4):
         ind-=1
     return ind
 
@@ -84,7 +84,7 @@ def _searchRailroadFromEndPoint(RailRoadList,StationList,point:tuple[float,float
     #次はここから
     #fstindexから線路を探す
     for i_RailRoad in range(fstIndex,len(RailRoadList)):
-        if IsSame_tuplefloat(point,RailRoadList[i_RailRoad]):
+        if IsSame_tuplefloat(point,RailRoadList[i_RailRoad][0]):
             l={}
             l[StationInfo.stationName]=_searchStationNameFromPoint(StationList,RailRoadList[i_RailRoad][-1])
             l[StationInfo.RailRoadsToStation]=RailRoadList[i_RailRoad][-1]
@@ -93,7 +93,12 @@ def _searchRailroadFromEndPoint(RailRoadList,StationList,point:tuple[float,float
 
 def _makeListDictRailGraph(RailRoadList,StationList):
     StationGraph={}
-    for stationData in StationList:
+    per=0
+    for i,stationData in enumerate(StationList):
+        p=i/len(StationList)
+        if p*100>per:
+            print(p*100)
+            per+=1
         xy=stationData[0]
         if stationData[1] in StationGraph.keys():
             StationGraph[stationData[1]][StationInfo.NextStationInfos].extend(_searchRailroadFromEndPoint(RailRoadList,StationList,xy[0]))
@@ -102,7 +107,7 @@ def _makeListDictRailGraph(RailRoadList,StationList):
     return StationGraph
 
 
-def MakeRailGraph(Filepath_Station:str,Filepath_Railroad:str,foldername="./usedata",forceUpdate=False):
+def MakeRailGraph(Filepath_Station:str,Filepath_Railroad:str,foldername="./usedata/",forceUpdate=False):
     filename_station=Filepath_Station.split('/')[-1].replace(".geojson","")
     filename_railroad=Filepath_Railroad.split('/')[-1].replace(".geojson","")
     filepath_graph=foldername+filename_station+filename_railroad+".json"
