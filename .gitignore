@@ -197,3 +197,4 @@ GPX位置判定
 test.py
 *.html
 testpy.py
+*.json
