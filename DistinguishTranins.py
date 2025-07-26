@@ -1,10 +1,12 @@
 import geopandas
 import CalcDistOnEarth as calcDOE
 import MakeRailGraph as MRG
+from collections import deque
+
 
 class DistinguishOnTrains:
-    def __init__(self,StationList,RailGraph,StationWidth=100,RailRoadWidth=20) -> None:
-        self.CalcDistFromLines=calcDOE.CalcDistFromLines()
+    def __init__(self,StationList,RailGraph,StationWidth=100,RailRoadWidth=20,to_epsg=2449) -> None:
+        self.CalcDistFromLines=calcDOE.CalcDistFromLines(to_epsg=to_epsg)
         self.calcDistFromPoint=calcDOE.CalcDistToPoint_ConvertPlane()
         self.StationList=sorted(StationList)
         self.RailGraph=RailGraph
@@ -46,7 +48,30 @@ class DistinguishOnTrains:
         else:
             return lind_nearStation
     
+    def _findConnectStation(self,lstr_inStation):
+        # 駅の被りをなくす.
+        visitedStationNames=[]
+        for inStation_i in lstr_inStation:
+            for stationName in inStation_i[1]:
+                if stationName not in visitedStationNames:
+                    visitedStationNames.append(stationName)
+        
+        for sName in visitedStationNames:
+            q=deque()
+            q.append(sName)
+            visited={}
+            for kname in self.RailGraph.keys():
+                visited[kname]=False
+            visited[sName]=True
+            while not q:
+                i_fName=q.popleft()
+                if visited[i_fName]:
+                    continue
+                
 
+
+
+        pass
 
     def DistinguishOnTrains(self,movedList):
         """_summary_
@@ -90,28 +115,27 @@ class DistinguishOnTrains:
                 for i_movedList in range(lstr_inStation[ind_F_inStation][0],lstr_inStation[ind_F_inStation+1][0]+1):
                     movedList[i_movedList][-1]=True
 
-
-            # for i_roadToStation in range(lstr_inStation[ind_neighborMRG.StationInfo[0]][0],lstr_inStation[ind_neighborMRG.StationInfo[0]+1][0]+1):
-            #     railDist=self.CalcDistFromLines.calcDist_PointToLine(self.RailGraph[ind_neighborMRG.StationInfo[1]][MRG.StationInfo.NextMRG.StationInfos][ind_neighborMRG.StationInfo[2]][MRG.StationInfo.RailRoadsToStation],movedList[i_roadToStation])
-            #     if railDist>self.RailRoadWidth:
-            #         onTrain=False
-            # if onTrain:
-            #     for i_roadToStation in range(lstr_inStation[ind_neighborMRG.StationInfo[0]][0],lstr_inStation[ind_neighborMRG.StationInfo[0]+1][0]+1):   
-            #         movedList[i_roadToStation][-1]=True
-        
+      
         return movedList
 
 class distinguishOnTrains_onlyRailRoad:
-    def __init__(self,Filepath_RailRoad,RailRoadWidth) -> None:
+    def __init__(self,Filepath_RailRoad,RailRoadWidth,to_epsg) -> None:
+        """線路からの距離をもとに電車判定
+
+        Args:
+            Filepath_RailRoad (Str): 線路情報があるファイルへのパス。geojsonを指定
+            RailRoadWidth (float): 線路の線からどれだけの距離を線路上と判定するか。単位はm
+            to_epsg (int): 座標変換じに使うEPSGコード。enumに用意
+        """
         df_railroad=geopandas.read_file(Filepath_RailRoad)
         self.RailCoors=MRG.convert_RailRoadGPDtoList(df_railroad)
-        self.CalcDistFromLines=calcDOE.CalcDistFromLines()
-        self.calcDistFromPoint=calcDOE.CalcDistToPoint_ConvertPlane()
+        self.CalcDistFromLines=calcDOE.CalcDistFromLines(to_epsg)
+        self.calcDistFromPoint=calcDOE.CalcDistToPoint_ConvertPlane(to_epsg=to_epsg)
         self.prevUpdatePoint=[0,0]
         self.NeighborList=[]
         self.RailRoadWidth=RailRoadWidth
-        self.CircleRadios=100 #if RailRoadWidth<=10 else RailRoadWidth*10
-        self.updateRadios=self.CircleRadios-RailRoadWidth*2
+        self.CircleRadios=5000 if RailRoadWidth<=10 else RailRoadWidth*10
+        self.updateRadios=self.CircleRadios/2
 
     def DistinguishOnTrains(self,movedList):
         """_summary_

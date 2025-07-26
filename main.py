@@ -8,6 +8,7 @@ import gpxpy
 import MakeRailGraph
 from MakeRailGraph import StationInfo
 import DistinguishTranins
+from CalcDistOnEarth import epsg_num
 
 filepath_Station="./usedata/N02-20_GML/N02-20_Station.geojson"
 filepath_RailRoad="./usedata/N02-20_GML/N02-20_RailroadSection.geojson"
@@ -32,7 +33,7 @@ for StationName,StationInfo_ith in RailGraph.items():
 print("main2")
 
 # dis=DistinguishTranins.DistinguishOnTrains(Stations,RailGraph)
-dis2=DistinguishTranins.distinguishOnTrains_onlyRailRoad(filepath_RailRoad,30)
+dis2=DistinguishTranins.distinguishOnTrains_onlyRailRoad(Filepath_RailRoad=filepath_RailRoad,RailRoadWidth=30,to_epsg=epsg_num.alon_132_138)
 print("main3")
 # newps=dis.DistinguishOnTrains(points)
 newps=dis2.DistinguishOnTrains(points)
