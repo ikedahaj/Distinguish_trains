@@ -134,7 +134,7 @@ class distinguishOnTrains_onlyRailRoad:
         self.prevUpdatePoint=[0,0]
         self.NeighborList=[]
         self.RailRoadWidth=RailRoadWidth
-        self.CircleRadios=5000 if RailRoadWidth<=10 else RailRoadWidth*10
+        self.CircleRadios=10000 if RailRoadWidth<=1000 else RailRoadWidth*10
         self.updateRadios=self.CircleRadios/2
 
     def DistinguishOnTrains(self,movedList):
@@ -175,9 +175,9 @@ class distinguishOnTrains_onlyRailRoad:
             return
         self.prevUpdatePoint=point
         self.NeighborList=[]
-        fInd=MRG.binarySearch(self.RailCoors,[point[1]-self.CircleRadios*calcDOE.const_lonPer1m,point[0]-self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:max([x[i][0][0],x[i][-1][0]]))
-        lInd=MRG.binarySearch(self.RailCoors,[point[1]+self.CircleRadios*calcDOE.const_lonPer1m,point[0]+self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:min([x[i][0][0],x[i][-1][0]]))
-        for ind in range(fInd,lInd+1) :
+        # fInd=MRG.binarySearch(self.RailCoors,[point[1]-self.CircleRadios*calcDOE.const_lonPer1m,point[0]-self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:max([x[i][0][0],x[i][-1][0]]))
+        # lInd=MRG.binarySearch(self.RailCoors,[point[1]+self.CircleRadios*calcDOE.const_lonPer1m,point[0]+self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:min([x[i][0][0],x[i][-1][0]]))
+        for ind in range(len(self.RailCoors)) :
             # movedDist=self.CalcDistFromLines.calcDist_PointToLine(MRG.StationInfo[0],point)
             movedDist=self.CalcDistFromLines.calcDist_PointToLine(self.RailCoors[ind],[point[1],point[0]])
             if movedDist<self.CircleRadios:
