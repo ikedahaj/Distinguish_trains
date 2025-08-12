@@ -1,5 +1,6 @@
 import pyproj
 import numpy as np
+import typing
 from enum import IntEnum
 const_lonPer1m=0.000010966382364
 const_latPer1m=0.000008983148616
@@ -196,11 +197,16 @@ class CalcDistToLine_ConvertPlane2:
         # self.to_epsg = pyproj.Proj('+init=EPSG:{}'.format(to_epsg))
         self.transformer=pyproj.Transformer.from_crs(f"EPSG:{from_epsg}",f"EPSG:{to_epsg}")
  
-    def _latlng2xy(self, lat, lng):
-        return self.transformer.transform(lat,lng)
+    def _latlng2xy(self, latlng):#lat, lng):
+        # lng,latの順番;
+        return self.transformer.transform(latlng[1],latlng[0])
         return pyproj.transform(self.from_epsg, self.to_epsg, lng, lat)
- 
-    def p2l(self, alat, alng, blat, blng, plat, plng):
+    def _p2p(self,cnv_a,cnv_b):
+        dy=cnv_a[0]-cnv_b[0]
+        dx=cnv_a[1]-cnv_b[1]
+        return math.sqrt(dx*dx+dy*dy)
+
+    def _p2l(self, cnv_a,cnv_b,cnv_p):# alat, alng, blat, blng, plat, plng):
         """点Pと線分ABの距離を算出する。
 
         Args:
@@ -215,13 +221,12 @@ class CalcDistToLine_ConvertPlane2:
             float: 距離。点pから降ろした垂線が線分AB上にあれば垂線の長さが、そうでないなら点A,Bのうち近いほうとの距離が返る。
             単位はm
         """
-        cnv_a = self._latlng2xy(alat, alng)
-        cnv_b = self._latlng2xy(blat, blng)
-        cnv_p = self._latlng2xy(plat, plng)
         ab_y=cnv_b[0]-cnv_a[0]
         ab_x=cnv_b[1]-cnv_a[1]
         ap_y=cnv_p[0]-cnv_a[0]
         ap_x=cnv_p[1]-cnv_a[1]
+        if math.isclose(ab_y,0,abs_tol=1e-10) and math.isclose(ab_x,0,abs_tol=1e-10):
+            return self._p2p(cnv_a,cnv_p)
         apdotab=ab_y*ap_y+ab_x*ap_x
         if apdotab <= 0:
             return np.sqrt(ap_y*ap_y+ap_x*ap_x)
@@ -231,6 +236,67 @@ class CalcDistToLine_ConvertPlane2:
         ab=ab2**0.5
         k=abs(-ab_y*ap_x+ab_x*ap_y)
         return k/ab
+    def _l2l(self,cnv_a,cnv_b,cnv_p,cnv_q):
+        ab_y=cnv_b[0]-cnv_a[0]
+        ab_x=cnv_b[1]-cnv_a[1]
+        pq_y=cnv_q[0]-cnv_p[0]
+        pq_x=cnv_q[1]-cnv_p[1]
+        ap_y=cnv_p[0]-cnv_a[0]
+        ap_x=cnv_p[1]-cnv_a[1]
+        aq_y=cnv_q[0]-cnv_a[0]
+        aq_x=cnv_q[1]-cnv_a[1]
+        bp_y=cnv_p[0]-cnv_b[0]
+        bp_x=cnv_p[1]-cnv_b[1]
+        is_abSame=math.isclose(ab_y,0,abs_tol=1e-10) and math.isclose(ab_x,0,abs_tol=1e-10)
+        is_pqSame=math.isclose(pq_x,0,abs_tol=1e-10) and math.isclose(pq_y,0,abs_tol=1e-10)
+        if is_abSame and is_pqSame:
+            return self._p2p(cnv_a,cnv_p)
+        elif is_abSame:
+            return self._p2l(cnv_p,cnv_q,cnv_a)
+        elif is_pqSame:
+            return self._p2l(cnv_a,cnv_b,cnv_p)
+        ab_cross_ap=ab_x*ap_y-ab_y*ap_x
+        ab_cross_aq=ab_x*aq_y-ab_y*aq_x
+        pq_cross_pa=-pq_x*ap_y+pq_y*ap_x
+        pq_cross_pb=-pq_x*bp_y+pq_y*bp_x
+        if ab_cross_ap*ab_cross_aq<0 and pq_cross_pa*pq_cross_pb<0:
+            return 0
+        
+        p2ab=self._p2l(cnv_a,cnv_b,cnv_p)
+        q2ab=self._p2l(cnv_a,cnv_b,cnv_q)
+        a2pq=self._p2l(cnv_p,cnv_q,cnv_a)
+        b2pq=self._p2l(cnv_p,cnv_q,cnv_b)
+        return min([p2ab,q2ab,a2pq,b2pq])
+    
+    def calcDist(self,aObj,bObj,mode:typing.Literal["p2p","p2l","l2l"]):
+        """
+        座標は全てlng,latの順番
+        mode:p2p
+            aObj:list[float] 点Aの座標
+            bObj:list[float] 点Bの座標
+        mode:p2l
+            aObj:list[float] 点pの座標
+            bObj:list[list[float]] 線分ABの座標
+        mode:l2l
+            aObj:list[list[float]] 線分ABの座標
+            bObj:list[list[float]] 線分PQの座標
+        """
+        match mode:
+            case "p2p":
+                cnv_a=self._latlng2xy(aObj)
+                cnv_b=self._latlng2xy(bObj)
+                return self._p2p(cnv_a,cnv_b)
+            case "p2l":
+                cnv_p=self._latlng2xy(aObj)
+                cnv_a=self._latlng2xy(bObj[0])
+                cnv_b=self._latlng2xy(bObj[1])
+                return self._p2l(cnv_a,cnv_b,cnv_p)
+            case "l2l":
+                cnv_a=self._latlng2xy(aObj[0])
+                cnv_b=self._latlng2xy(aObj[1])
+                cnv_p=self._latlng2xy(bObj[0])
+                cnv_q=self._latlng2xy(bObj[1])
+                return self._l2l(cnv_a,cnv_b,cnv_p,cnv_q)
     
 if __name__=="__main__":
     import time,random
@@ -263,9 +329,11 @@ if __name__=="__main__":
     d=136.897292
     e=35.078341
     f=136.890308
+    g=e
+    h=136.8973
     # for i in range(1000):
     dist=calc1.p2l(a,b,c,d,e,f)
-    dist2=calc2.p2l(a,b,c,d,e,f)
+    dist2=calc2.calcDist([[a,b],[c,d]],[[e,f],[g,h]],mode="l2l")
     #     if not math.isclose(dist,dist2):
     #         print(a,d,b,e,c,f)
     #         print(dist-dist2)
