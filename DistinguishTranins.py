@@ -7,15 +7,14 @@ from collections import deque
 class DistinguishOnTrains:
     def __init__(self,StationList,RailGraph,StationWidth=100,RailRoadWidth=20,to_epsg=2449) -> None:
         self.CalcDistFromLines=calcDOE.CalcDistFromLines(to_epsg=to_epsg)
-        self.calcDistFromPoint=calcDOE.CalcDistToPoint_ConvertPlane()
         self.StationList=sorted(StationList)
         self.RailGraph=RailGraph
         self.prevUpdatePoint=[0,0]
         self.NeighborList=[]
         self.StationWidth=StationWidth
         self.RailRoadWidth=RailRoadWidth
-        self.CircleRadios=100 if StationWidth<=10 else StationWidth*10
-        self.updateRadios=self.CircleRadios-StationWidth*2
+        self.CircleRadios=50000 if StationWidth<=5000 else StationWidth*10
+        self.updateRadios=self.CircleRadios/2
 
     def _updateNeighborList(self,point):
         """中心からCircleRadios内にある駅のリストを作る
@@ -23,16 +22,14 @@ class DistinguishOnTrains:
         Args:
             point (list[float]): 現在地
         """
-        if self.calcDistFromPoint.p2p(point[1],point[0],self.prevUpdatePoint[1],self.prevUpdatePoint[0])<self.updateRadios:
+        if self.CalcDistFromLines.CalcDist.calcDist(point,self.prevUpdatePoint,mode="p2p")<self.updateRadios:
             return
         self.prevUpdatePoint=point
         self.NeighborList=[]
-        fInd=MRG.binarySearch(self.StationList,[point[0]-self.CircleRadios*calcDOE.const_lonPer1m,point[1]-self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:min([x[i][0][0][0],x[i][0][-1][0]]))
-        lInd=MRG.binarySearch(self.StationList,[point[0]+self.CircleRadios*calcDOE.const_lonPer1m,point[1]+self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:min([x[i][0][0][0],x[i][0][-1][0]]))
-        for ind in range(fInd,lInd+1) :
-            # movedDist=self.CalcDistFromLines.calcDist_PointToLine(MRG.StationInfo[0],point)
-            movedDist=self.calcDistFromPoint.p2p(self.StationList[ind][0][0][1],self.StationList[ind][0][0][0],point[1],point[0])
-            if movedDist<self.CircleRadios:
+        for ind in range(len(self.StationList)) :
+            # movedDist=self.CalcDistFromLines.calcDist_PointToLines(MRG.StationInfo[0],point)
+            stationDist=self.CalcDistFromLines.calcDist_PointToLines(self.StationList[ind][0],point)
+            if stationDist<self.CircleRadios:
                 self.NeighborList.append(ind)
     def _SearchNearStation(self,point):
         self._updateNeighborList(point=point)
@@ -40,7 +37,7 @@ class DistinguishOnTrains:
             return
         lind_nearStation=[]
         for ind in self.NeighborList:
-            tmp=self.CalcDistFromLines.calcDist_PointToLine(self.StationList[ind][0],point)
+            tmp=self.CalcDistFromLines.calcDist_PointToLines(self.StationList[ind][0],point)
             if tmp<=self.StationWidth:
                 lind_nearStation.append(self.StationList[ind][1])
         if not lind_nearStation:
@@ -108,7 +105,7 @@ class DistinguishOnTrains:
             RailCoor=self.RailGraph[fStationName][MRG.StationInfo.NextStationInfos][ind_Nxt_RG][MRG.StationInfo.RailRoadsToStation]
             for i_movedList in range(lstr_inStation[ind_F_inStation][0],lstr_inStation[ind_F_inStation+1][0]+1):
                 cntStep+=1
-                railDist=self.CalcDistFromLines.calcDist_PointToLine(RailCoor,[movedList[i_movedList][1],movedList[i_movedList][0]])
+                railDist=self.CalcDistFromLines.calcDist_PointToLines(RailCoor,[movedList[i_movedList][1],movedList[i_movedList][0]])
                 if railDist<self.RailRoadWidth:
                     cntOnTrain+=1
             if cntOnTrain/cntStep>0.8:
@@ -130,11 +127,10 @@ class distinguishOnTrains_onlyRailRoad:
         df_railroad=geopandas.read_file(Filepath_RailRoad)
         self.RailCoors=MRG.convert_RailRoadGPDtoList(df_railroad)
         self.CalcDistFromLines=calcDOE.CalcDistFromLines(to_epsg)
-        self.calcDistFromPoint=calcDOE.CalcDistToPoint_ConvertPlane(to_epsg=to_epsg)
         self.prevUpdatePoint=[0,0]
         self.NeighborList=[]
         self.RailRoadWidth=RailRoadWidth
-        self.CircleRadios=10000 if RailRoadWidth<=1000 else RailRoadWidth*10
+        self.CircleRadios=50000 if RailRoadWidth<=5000 else RailRoadWidth*10
         self.updateRadios=self.CircleRadios/2
 
     def DistinguishOnTrains(self,movedList):
@@ -171,23 +167,23 @@ class distinguishOnTrains_onlyRailRoad:
         Args:
             point (list[float]): 現在地
         """
-        if self.calcDistFromPoint.p2p(point[1],point[0],self.prevUpdatePoint[1],self.prevUpdatePoint[0])<self.updateRadios:
+        if self.CalcDistFromLines.CalcDist.calcDist(point,self.prevUpdatePoint,mode="p2p")<self.updateRadios:
             return
         self.prevUpdatePoint=point
         self.NeighborList=[]
         # fInd=MRG.binarySearch(self.RailCoors,[point[1]-self.CircleRadios*calcDOE.const_lonPer1m,point[0]-self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:max([x[i][0][0],x[i][-1][0]]))
         # lInd=MRG.binarySearch(self.RailCoors,[point[1]+self.CircleRadios*calcDOE.const_lonPer1m,point[0]+self.CircleRadios*calcDOE.const_latPer1m],lambda i,x:min([x[i][0][0],x[i][-1][0]]))
         for ind in range(len(self.RailCoors)) :
-            # movedDist=self.CalcDistFromLines.calcDist_PointToLine(MRG.StationInfo[0],point)
-            movedDist=self.CalcDistFromLines.calcDist_PointToLine(self.RailCoors[ind],[point[1],point[0]])
+            # movedDist=self.CalcDistFromLines.calcDist_PointToLines(MRG.StationInfo[0],point)
+            movedDist=self.CalcDistFromLines.calcDist_PointToLines(self.RailCoors[ind],point)
             if movedDist<self.CircleRadios:
                 self.NeighborList.append(ind)
 
     def calcMinDist_RL(self,point):
-        # minDist=min(self.NeighborList,key=lambda x:self.CalcDistFromLines.calcDist_PointToLine(x,[point[1],point[0]]))
+        # minDist=min(self.NeighborList,key=lambda x:self.CalcDistFromLines.calcDist_PointToLines(x,[point[1],point[0]]))
         minDist=self.CircleRadios*2
         for ind in self.NeighborList:
-            dist=self.CalcDistFromLines.calcDist_PointToLine(self.RailCoors[ind],[point[1],point[0]])
+            dist=self.CalcDistFromLines.calcDist_PointToLines(self.RailCoors[ind],point)
             minDist=min([minDist,dist])
         return minDist
     

@@ -175,12 +175,12 @@ class epsg_num(IntEnum):
 
 class CalcDistFromLines:
     def __init__(self,to_epsg) -> None:
-        self._CalcDist=CalcDist_ConvertPlane(to_epsg=to_epsg)
+        self.CalcDist=CalcDist_ConvertPlane(to_epsg=to_epsg)
 
-    def calcDist_PointToLine(self,Lines:list[list[float]],Point:list[float])->float:
+    def calcDist_PointToLines(self,Lines:list[list[float]],Point:list[float])->float:
         minDist=1e10
         for i in range(len(Lines)-1):
-            minDist=min([minDist,self._CalcDist.calcDist(Point,Lines[i:i+2],mode="p2l")])
+            minDist=min([minDist,self.CalcDist.calcDist(Point,Lines[i:i+2],mode="p2l")])
         return minDist
     
     def calcDist_LineToLines(self,Lines:list[list[float]],Line:list[list[float]]):
@@ -189,7 +189,7 @@ class CalcDistFromLines:
         """
         minDist=1e10
         for i in range(len(Lines)-1):
-            minDist=min([minDist,self._CalcDist.calcDist(Line,Lines[i:i+2],mode="l2l")])
+            minDist=min([minDist,self.CalcDist.calcDist(Line,Lines[i:i+2],mode="l2l")])
     
 
 class CalcDist_ConvertPlane:
